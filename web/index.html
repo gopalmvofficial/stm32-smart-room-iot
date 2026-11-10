@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Room System - STM32 Web Control Panel</title>
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1e38 100%);
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --accent-cyan: #38bdf8;
+      --accent-green: #22c55e;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #a855f7;
+      --text-bright: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-bright);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      padding: 20px 28px;
+      border-radius: 16px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .title-group h1 {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .title-group p {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      padding: 8px 16px;
+      border-radius: 9999px;
+      color: var(--accent-green);
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      background: var(--accent-green);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.2); }
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Temperature Gauge Display */
+    .temp-display {
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .temp-value {
+      font-size: 56px;
+      font-weight: 800;
+      color: var(--accent-cyan);
+      letter-spacing: -1px;
+    }
+
+    .temp-unit {
+      font-size: 24px;
+      color: var(--text-muted);
+    }
+
+    .temp-subtext {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 8px;
+    }
+
+    /* PIR Motion Card */
+    .pir-status-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 2px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .pir-status-box.active {
+      border-color: var(--accent-amber);
+      background: rgba(245, 158, 11, 0.1);
+      box-shadow: 0 0 24px rgba(245, 158, 11, 0.2);
+    }
+
+    .pir-icon {
+      font-size: 40px;
+      margin-bottom: 8px;
+    }
+
+    .pir-text {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .led-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .pc13-led {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #475569;
+    }
+
+    .pc13-led.blinking {
+      background: #3b82f6;
+      box-shadow: 0 0 12px #3b82f6;
+      animation: blink 0.15s infinite alternate;
+    }
+
+    @keyframes blink {
+      from { opacity: 1; }
+      to { opacity: 0.2; }
+    }
+
+    /* Fan Control Card & Spinning Fan */
+    .fan-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .fan-icon-wrap {
+      width: 100px;
+      height: 100px;
+      position: relative;
+    }
+
+    .fan-svg {
+      width: 100%;
+      height: 100%;
+      fill: var(--text-muted);
+      transition: fill 0.3s ease;
+    }
+
+    .fan-svg.spinning {
+      fill: var(--accent-green);
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    .mode-buttons {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text-bright);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .btn.active {
+      background: var(--accent-cyan);
+      color: #0f172a;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+    }
+
+    /* Interactive Simulation Sandbox */
+    .sandbox-card h3 {
+      font-size: 18px;
+      margin-bottom: 16px;
+      color: var(--accent-purple);
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent-cyan);
+      width: 160px;
+    }
+
+    /* Terminal Console */
+    .terminal {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 13px;
+      height: 160px;
+      overflow-y: auto;
+      color: #a7f3d0;
+      margin-top: 24px;
+    }
+
+    .log-entry {
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+
+    .log-entry .time { color: var(--text-muted); }
+    .log-entry .tag-sys { color: var(--accent-cyan); }
+    .log-entry .tag-pir { color: var(--accent-amber); }
+    .log-entry .tag-relay { color: var(--accent-green); }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="title-group">
+        <h1>Smart Room Automation Dashboard</h1>
+        <p>STM32F103 Blue Pill • DS18B20 • PIR Motion • 16x2 LCD • 2-Ch Relay</p>
+      </div>
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        <span id="connState">STM32 LIVE</span>
+      </div>
+    </header>
+
+    <div class="dashboard-grid">
+
+      <!-- Card 1: DS18B20 Temperature -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🌡️ Temperature Monitor</div>
+          <span style="font-size: 12px; color: var(--text-muted);">PA1 Pin</span>
+        </div>
+        <div class="temp-display">
+          <div>
+            <span class="temp-value" id="tempVal">25.4</span>
+            <span class="temp-unit">°C</span>
+          </div>
+          <div class="temp-subtext" id="tempFahrenheit">77.7 °F • Status: OK</div>
+        </div>
+      </div>
+
+      <!-- Card 2: PIR Motion Detector -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🚶 PIR Motion Detector</div>
+          <span style="font-size: 12px; color: var(--text-muted);">PA0 Pin</span>
+        </div>
+        <div class="pir-status-box" id="pirBox">
+          <div class="pir-icon" id="pirIcon">🟢</div>
+          <div class="pir-text" id="pirText">AREA CLEAR</div>
+          <div class="led-indicator">
+            <div class="pc13-led" id="pc13Led"></div>
+            <span>Onboard PC13 LED</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Relay Channel 2 Fan Control -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⚡ Fan Relay Control</div>
+          <span style="font-size: 12px; color: var(--text-muted);">PB12 Pin (IN2)</span>
+        </div>
+        <div class="fan-container">
+          <div class="fan-icon-wrap">
+            <svg class="fan-svg" id="fanSvg" viewBox="0 0 24 24">
+              <path d="M12 11a1 1 0 100 2 1 1 0 000-2zm0-9a4 4 0 00-4 4c0 1.8.8 2.8 2.2 3.6L12 11c.6.4 1.4.4 2 0l1.8-1.4C17.2 8.8 18 7.8 18 6a4 4 0 00-4-4zm-9 9a4 4 0 004 4c1.8 0 2.8-.8 3.6-2.2L11 12c.4-.6.4-1.4 0-2l-1.4-1.8C8.8 6.8 7.8 6 6 6a4 4 0 00-4 4zm9 9a4 4 0 004-4c0-1.8-.8-2.8-2.2-3.6L12 13c-.6-.4-1.4-.4-2 0l-1.8 1.4C7 15.2 6 16.2 6 18a4 4 0 004 4zm9-9a4 4 0 00-4-4c-1.8 0-2.8.8-3.6 2.2L13 12c-.4.6-.4 1.4 0 2l1.4 1.8c.8 1.4 1.8 2.2 3.6 2.2a4 4 0 004-4z"/>
+            </svg>
+          </div>
+          <div style="font-weight: 700; font-size: 16px;" id="fanStatusText">FAN STOPPED</div>
+
+          <div class="mode-buttons">
+            <button class="btn active" id="btnAuto" onclick="setMode('auto')">AUTO (PIR)</button>
+            <button class="btn" id="btnOn" onclick="setMode('on')">FORCE ON</button>
+            <button class="btn" id="btnOff" onclick="setMode('off')">FORCE OFF</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Interactive Hardware Simulation Sandbox -->
+    <div class="card sandbox-card">
+      <h3>🛠️ Interactive System Controls (Live Sandbox)</h3>
+      
+      <div class="control-row">
+        <div>
+          <strong>Trigger PIR Motion (PA0)</strong>
+          <div style="font-size: 13px; color: var(--text-muted);">Simulates human walking into the room</div>
+        </div>
+        <button class="btn" style="flex: none; padding: 10px 20px; background: var(--accent-amber); color: #0f172a;" onmousedown="triggerMotion(true)" onmouseup="triggerMotion(false)">
+          Press to Detect Motion
+        </button>
+      </div>
+
+      <div class="control-row">
+        <div>
+          <strong>Simulate Temperature Sensor (PA1)</strong>
+          <div style="font-size: 13px; color: var(--text-muted);">Adjust DS18B20 live readout</div>
+        </div>
+        <div class="slider-wrap">
+          <input type="range" id="tempSlider" min="15" max="40" step="0.5" value="25.4" oninput="updateTemp(this.value)">
+          <span id="sliderVal" style="font-weight: bold; width: 48px;">25.4°C</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Serial Monitor Debug Log -->
+    <div class="terminal" id="terminalLog">
+      <div class="log-entry"><span class="time">[00:00:00]</span> <span class="tag-sys">[SYSTEM]</span> Firmware booted. DS18B20 Init OK. PIR Init OK. LCD 16x2 OK.</div>
+      <div class="log-entry"><span class="time">[00:00:01]</span> <span class="tag-relay">[RELAY]</span> PB12 Set HIGH (Active-LOW Relay OFF). Fan Stopped.</div>
+    </div>
+
+  </div>
+
+  <script>
+    let currentMode = 'auto';
+    let isMotionActive = false;
+
+    function log(tag, tagClass, text) {
+      const term = document.getElementById('terminalLog');
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0];
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="time">[${timeStr}]</span> <span class="${tagClass}">[${tag}]</span> ${text}`;
+      term.appendChild(entry);
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.getElementById('btnAuto').className = 'btn' + (mode === 'auto' ? ' active' : '');
+      document.getElementById('btnOn').className = 'btn' + (mode === 'on' ? ' active' : '');
+      document.getElementById('btnOff').className = 'btn' + (mode === 'off' ? ' active' : '');
+
+      log('CONTROL', 'tag-sys', `Mode switched to ${mode.toUpperCase()}`);
+      
+      // Send command to Hardware and Blynk
+      if (mode === 'on') {
+        fetch('/api/fan/1');
+      } else if (mode === 'off') {
+        fetch('/api/fan/0');
+      } else if (mode === 'auto') {
+        fetch('/api/fan/0');
+      }
+
+      updateFanState();
+    }
+
+    function triggerMotion(active) {
+      isMotionActive = active;
+      const box = document.getElementById('pirBox');
+      const icon = document.getElementById('pirIcon');
+      const text = document.getElementById('pirText');
+      const led = document.getElementById('pc13Led');
+
+      if (active) {
+        box.className = 'pir-status-box active';
+        icon.innerText = '🏃';
+        text.innerText = 'MOTION DETECTED!';
+        led.className = 'pc13-led blinking';
+        log('PIR', 'tag-pir', 'PA0 Pin HIGH (Motion Triggered)');
+      } else {
+        box.className = 'pir-status-box';
+        icon.innerText = '🟢';
+        text.innerText = 'AREA CLEAR';
+        led.className = 'pc13-led';
+        log('PIR', 'tag-pir', 'PA0 Pin LOW (Clear)');
+      }
+
+      updateFanState();
+    }
+
+    function updateTemp(val) {
+      document.getElementById('tempVal').innerText = parseFloat(val).toFixed(1);
+      document.getElementById('sliderVal').innerText = parseFloat(val).toFixed(1) + '°C';
+      const fahr = (parseFloat(val) * 1.8 + 32).toFixed(1);
+      document.getElementById('tempFahrenheit').innerText = `${fahr} °F • Status: OK`;
+      log('DS18B20', 'tag-sys', `Temperature updated: ${val}°C`);
+    }
+
+    function updateFanState() {
+      let fanOn = false;
+      if (currentMode === 'on') fanOn = true;
+      else if (currentMode === 'off') fanOn = false;
+      else if (currentMode === 'auto') fanOn = isMotionActive;
+
+      const fanSvg = document.getElementById('fanSvg');
+      const statusText = document.getElementById('fanStatusText');
+
+      if (fanOn) {
+        fanSvg.className = 'fan-svg spinning';
+        statusText.innerText = 'FAN RUNNING (Relay Active)';
+        statusText.style.color = 'var(--accent-green)';
+      } else {
+        fanSvg.className = 'fan-svg';
+        statusText.innerText = 'FAN STOPPED';
+        statusText.style.color = 'var(--text-muted)';
+      }
+    }
+
+    // Auto-poll live STM32 hardware and Blynk Cloud
+    let lastMotion = null;
+    let lastTemp = null;
+    let lastFan = null;
+
+    async function pollLiveHardware() {
+      try {
+        const res = await fetch('/api/status');
+        if (res.ok) {
+          const data = await res.json();
+
+          // 1. Live Temperature Update
+          if (data.temp_valid && data.temperature !== lastTemp) {
+            lastTemp = data.temperature;
+            updateTemp(data.temperature);
+          }
+
+          // 2. Live PIR Motion Update
+          if (data.motion !== lastMotion) {
+            lastMotion = data.motion;
+            triggerMotion(data.motion === 1);
+          }
+
+          // 3. Live Relay State Update
+          if (data.relay !== lastFan) {
+            lastFan = data.relay;
+            const fanSvg = document.getElementById('fanSvg');
+            const statusText = document.getElementById('fanStatusText');
+            if (data.relay === 1) {
+              fanSvg.className = 'fan-svg spinning';
+              statusText.innerText = 'FAN RUNNING (Hardware Active)';
+              statusText.style.color = 'var(--accent-green)';
+            } else {
+              fanSvg.className = 'fan-svg';
+              statusText.innerText = 'FAN STOPPED';
+              statusText.style.color = 'var(--text-muted)';
+            }
+          }
+        }
+      } catch (e) {
+        // Fallback for standalone file open
+      }
+    }
+
+    setInterval(pollLiveHardware, 800);
+    pollLiveHardware();
+  </script>
+</body>
+</html>

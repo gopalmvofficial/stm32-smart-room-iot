@@ -1,0 +1,31 @@
+# Build output & compiled binaries
+build/
+*.elf
+*.bin
+*.hex
+*.map
+*.o
+*.d
+*.su
+
+# IDE and Project metadata
+.settings/
+.vscode/
+.idea/
+.cproject
+.project
+*.launch
+
+# Python bytecode & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+
+# OS-specific files
+Thumbs.db
+.DS_Store
+
+# Scratch / External folders
+Laravel-Debugbar-MCP/
